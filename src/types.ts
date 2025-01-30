@@ -22,8 +22,8 @@ export interface InputSchema {
 /**
  * Extract cell names from a schema
  */
-export type CellNames<Schema extends readonly CellSchema[]> =
-  Schema[number]['name'];
+export type CellNames<CSchema extends readonly CellSchema[]> =
+  CSchema[number]['name'];
 
 /**
  * Extract input names from a schema
@@ -47,9 +47,9 @@ export type ConcreteType<T extends 'number' | 'string' | 'boolean'> =
  * Get concrete type for a specific cell from schema
  */
 export type CellTypeFromSchema<
-  Schema extends readonly CellSchema[],
-  Name extends CellNames<Schema>
-> = ConcreteType<Extract<Schema[number], { name: Name }>['type']>;
+  CSchema extends readonly CellSchema[],
+  Name extends CellNames<CSchema>
+> = ConcreteType<Extract<CSchema[number], { name: Name }>['type']>;
 
 /**
  * Get concrete type for a specific input from schema
@@ -75,11 +75,11 @@ export type CellState<T extends CellType = CellType> = T;
  * Context object passed to formulas
  */
 export type FormulaContext<
-  Schema extends readonly CellSchema[],
+  CSchema extends readonly CellSchema[],
   ISchema extends readonly InputSchema[]
 > = {
-  prevRow: RowState<Schema> | null;
-  currRow: Partial<RowState<Schema>>;
+  prevRow: RowState<CSchema> | null;
+  currRow: Partial<RowState<CSchema>>;
   inputs: TypedInputs<ISchema>;
 };
 
@@ -87,30 +87,30 @@ export type FormulaContext<
  * Definition of a cell's behavior
  */
 export interface CellDefinition<
-  Schema extends readonly CellSchema[],
+  CSchema extends readonly CellSchema[],
   ISchema extends readonly InputSchema[],
-  Name extends CellNames<Schema>
+  Name extends CellNames<CSchema>
 > {
-  type: Extract<Schema[number], { name: Name }>['type'];
+  type: Extract<CSchema[number], { name: Name }>['type'];
   formula: (
-    context: FormulaContext<Schema, ISchema>
-  ) => CellTypeFromSchema<Schema, Name>;
-  currRowDependencies: Array<CellNames<Schema>>;
+    context: FormulaContext<CSchema, ISchema>
+  ) => CellTypeFromSchema<CSchema, Name>;
+  currRowDependencies: Array<CellNames<CSchema>>;
 }
 
 /**
  * Template defining the structure of all rows
  */
 export type RowTemplate<
-  Schema extends readonly CellSchema[],
+  CSchema extends readonly CellSchema[],
   ISchema extends readonly InputSchema[]
 > = {
-  [Name in CellNames<Schema>]: CellDefinition<Schema, ISchema, Name>;
+  [Name in CellNames<CSchema>]: CellDefinition<CSchema, ISchema, Name>;
 };
 
 /**
  * Runtime state of a row
  */
-export type RowState<Schema extends readonly CellSchema[]> = {
-  [Name in CellNames<Schema>]: CellState<CellTypeFromSchema<Schema, Name>>;
+export type RowState<CSchema extends readonly CellSchema[]> = {
+  [Name in CellNames<CSchema>]: CellState<CellTypeFromSchema<CSchema, Name>>;
 };
