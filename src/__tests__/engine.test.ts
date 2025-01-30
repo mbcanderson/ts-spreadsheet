@@ -3,7 +3,39 @@ import { processRows, CircularDependencyError, RowTemplate } from '../';
 describe('typesheet', () => {
   const basicInputSchema = [{ name: 'multiplier', type: 'number' }] as const;
 
-  describe('Basic Functionality', () => {
+  describe('Basic Example', () => {
+    const cellSchema = [
+      { name: 'a', type: 'number' },
+      { name: 'b', type: 'number' },
+    ] as const;
+
+    const inputSchema = [{ name: 'initialValue', type: 'number' }] as const;
+
+    const template: RowTemplate<typeof cellSchema, typeof inputSchema> = {
+      a: {
+        type: 'number',
+        formula: ({ currRow }) => currRow.b!,
+        currRowDependencies: ['b'],
+      },
+      b: {
+        type: 'number',
+        formula: ({ prevRow, inputs: { initialValue } }) =>
+          prevRow ? prevRow.b + 1 : initialValue,
+        currRowDependencies: [],
+      },
+    };
+
+    test('processes rows correctly', () => {
+      const rows = processRows(cellSchema, template, { initialValue: 5 }, 3);
+      expect(rows).toEqual([
+        { a: 5, b: 5 },
+        { a: 6, b: 6 },
+        { a: 7, b: 7 },
+      ]);
+    });
+  });
+
+  describe('Advanced Example', () => {
     const loanSchema = [
       { name: 'month', type: 'number' },
       { name: 'payment', type: 'number' },
@@ -21,7 +53,7 @@ describe('typesheet', () => {
     const loanTemplate: RowTemplate<typeof loanSchema, typeof loanInputs> = {
       month: {
         type: 'number',
-        formula: ({ prevRow }) => (prevRow?.month.evaluatedValue ?? 0) + 1,
+        formula: ({ prevRow }) => (prevRow?.month ?? 0) + 1,
         currRowDependencies: [],
       },
       payment: {
@@ -31,7 +63,7 @@ describe('typesheet', () => {
           inputs: { loanAmount, annualRate, termMonths },
         }) => {
           if (prevRow) {
-            return prevRow.payment.evaluatedValue;
+            return prevRow.payment;
           }
           const monthlyRate = annualRate / 12;
           return (
@@ -45,9 +77,7 @@ describe('typesheet', () => {
       interestPayment: {
         type: 'number',
         formula: ({ prevRow, inputs: { annualRate, loanAmount } }) => {
-          const balance = prevRow
-            ? prevRow.remainingBalance.evaluatedValue
-            : loanAmount;
+          const balance = prevRow ? prevRow.remainingBalance : loanAmount;
           return (balance * annualRate) / 12;
         },
         currRowDependencies: [],
@@ -55,18 +85,15 @@ describe('typesheet', () => {
       principalPayment: {
         type: 'number',
         formula: ({ currRow }) => {
-          const payment = currRow.payment?.evaluatedValue ?? 0;
-          const interestPayment = currRow.interestPayment?.evaluatedValue ?? 0;
-          return payment - interestPayment;
+          return currRow.payment! - currRow.interestPayment!;
         },
         currRowDependencies: ['payment', 'interestPayment'],
       },
       remainingBalance: {
         type: 'number',
         formula: ({ prevRow, currRow, inputs: { loanAmount } }) => {
-          const previousBalance =
-            prevRow?.remainingBalance.evaluatedValue ?? loanAmount;
-          return previousBalance - currRow.principalPayment!.evaluatedValue!;
+          const previousBalance = prevRow?.remainingBalance ?? loanAmount;
+          return previousBalance - currRow.principalPayment!;
         },
         currRowDependencies: ['principalPayment'],
       },
@@ -80,21 +107,19 @@ describe('typesheet', () => {
         360
       );
 
-
-      console.log(schedule);
       expect(schedule).toHaveLength(360);
 
-      expect(schedule[0].month.evaluatedValue).toEqual(1);
-      expect(schedule[0].payment.evaluatedValue).toBeCloseTo(1013.37, 2);
-      expect(schedule[0].interestPayment.evaluatedValue).toBeCloseTo(750, 2);
-      expect(schedule[0].principalPayment.evaluatedValue).toBeCloseTo(263.37, 2);
-      expect(schedule[0].remainingBalance.evaluatedValue).toBeCloseTo(199736.63, 2);
+      expect(schedule[0].month).toEqual(1);
+      expect(schedule[0].payment).toBeCloseTo(1013.37, 2);
+      expect(schedule[0].interestPayment).toBeCloseTo(750, 2);
+      expect(schedule[0].principalPayment).toBeCloseTo(263.37, 2);
+      expect(schedule[0].remainingBalance).toBeCloseTo(199736.63, 2);
 
-      expect(schedule[359].month.evaluatedValue).toEqual(360);
-      expect(schedule[359].payment.evaluatedValue).toBeCloseTo(1013.37, 2);
-      expect(schedule[359].interestPayment.evaluatedValue).toBeCloseTo(3.79, 2);
-      expect(schedule[359].principalPayment.evaluatedValue).toBeCloseTo(1009.58, 2);
-      expect(schedule[359].remainingBalance.evaluatedValue).toBeCloseTo(0, 2);
+      expect(schedule[359].month).toEqual(360);
+      expect(schedule[359].payment).toBeCloseTo(1013.37, 2);
+      expect(schedule[359].interestPayment).toBeCloseTo(3.79, 2);
+      expect(schedule[359].principalPayment).toBeCloseTo(1009.58, 2);
+      expect(schedule[359].remainingBalance).toBeCloseTo(0, 2);
     });
   });
 
@@ -117,14 +142,12 @@ describe('typesheet', () => {
         },
         intermediate: {
           type: 'number',
-          formula: ({ currRow }) => currRow.base!.evaluatedValue! * 2,
+          formula: ({ currRow }) => currRow.base! * 2,
           currRowDependencies: ['base'],
         },
         final: {
           type: 'number',
-          formula: ({ currRow }) =>
-            currRow.intermediate!.evaluatedValue! +
-            currRow.base!.evaluatedValue!,
+          formula: ({ currRow }) => currRow.intermediate! + currRow.base!,
           currRowDependencies: ['intermediate', 'base'],
         },
       };
@@ -137,9 +160,9 @@ describe('typesheet', () => {
       );
 
       expect(results[0]).toEqual({
-        base: { evaluatedValue: 10 },
-        intermediate: { evaluatedValue: 20 },
-        final: { evaluatedValue: 30 },
+        base: 10,
+        intermediate: 20,
+        final: 30,
       });
     });
 
@@ -155,12 +178,12 @@ describe('typesheet', () => {
       > = {
         a: {
           type: 'number',
-          formula: ({ currRow }) => currRow.b!.evaluatedValue! + 1,
+          formula: ({ currRow }) => currRow.b! + 1,
           currRowDependencies: ['b'],
         },
         b: {
           type: 'number',
-          formula: ({ currRow }) => currRow.a!.evaluatedValue! + 1,
+          formula: ({ currRow }) => currRow.a! + 1,
           currRowDependencies: ['a'],
         },
       };
@@ -190,8 +213,8 @@ describe('typesheet', () => {
         withPrevious: {
           type: 'number',
           formula: ({ prevRow, currRow }) => {
-            const prevValue = prevRow?.withPrevious.evaluatedValue || 0;
-            const currentValue = currRow.current!.evaluatedValue!;
+            const prevValue = prevRow?.withPrevious || 0;
+            const currentValue = currRow.current!;
             return prevValue + currentValue;
           },
           currRowDependencies: ['current'],
@@ -205,9 +228,7 @@ describe('typesheet', () => {
         4
       );
 
-      expect(results.map((row) => row.withPrevious.evaluatedValue)).toEqual([
-        20, 40, 60, 80,
-      ]);
+      expect(results.map((row) => row.withPrevious)).toEqual([20, 40, 60, 80]);
     });
   });
 
@@ -236,13 +257,13 @@ describe('typesheet', () => {
         string: {
           type: 'string',
           formula: ({ inputs: { textPrefix }, currRow }) =>
-            `${textPrefix}-${currRow.number!.evaluatedValue!}`,
+            `${textPrefix}-${currRow.number!}`,
           currRowDependencies: ['number'],
         },
         boolean: {
           type: 'boolean',
           formula: ({ inputs: { threshold }, currRow }) =>
-            currRow.number!.evaluatedValue! > threshold,
+            currRow.number! > threshold,
           currRowDependencies: ['number'],
         },
       };
@@ -255,9 +276,9 @@ describe('typesheet', () => {
       );
 
       expect(results[0]).toEqual({
-        number: { evaluatedValue: 42 },
-        string: { evaluatedValue: 'test-42' },
-        boolean: { evaluatedValue: true },
+        number: 42,
+        string: 'test-42',
+        boolean: true,
       });
     });
   });

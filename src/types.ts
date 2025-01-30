@@ -69,9 +69,7 @@ export type TypedInputs<ISchema extends readonly InputSchema[]> = {
 /**
  * Runtime state of a cell
  */
-export interface CellState<T extends CellType = CellType> {
-  evaluatedValue: T;
-}
+export type CellState<T extends CellType = CellType> = T;
 
 /**
  * Context object passed to formulas

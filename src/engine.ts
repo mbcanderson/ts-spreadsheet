@@ -9,36 +9,21 @@ import {
 } from './types';
 import { CircularDependencyError } from './errors';
 
-// /**
-//  * Creates an empty row state from a template
-//  */
-// export function createEmptyRowState<Schema extends readonly CellSchema[]>(
-//   schema: Schema
-// ): RowState<Schema> {
-//   const state: Partial<RowState<Schema>> = {};
-//   return state;
-//   // for (const cell of schema) {
-//   // const cellName = cell.name as keyof RowState<Schema>;
-//   // state[cellName] = { evaluatedValue: null };
-//   // }
-//   // return state as RowState<Schema>;
-// }
-
 /**
  * Compiles execution order for cells based on dependencies
  */
 export function compileExecutionOrder<
-  Schema extends readonly CellSchema[],
+  CSchema extends readonly CellSchema[],
   ISchema extends readonly InputSchema[]
 >(
-  template: RowTemplate<Schema, ISchema>,
-  schema: Schema
-): Array<CellNames<Schema>> {
-  const executionOrder: Array<CellNames<Schema>> = [];
-  const visited = new Set<CellNames<Schema>>();
-  const visiting = new Set<CellNames<Schema>>();
+  template: RowTemplate<CSchema, ISchema>,
+  cellSchema: CSchema
+): Array<CellNames<CSchema>> {
+  const executionOrder: Array<CellNames<CSchema>> = [];
+  const visited = new Set<CellNames<CSchema>>();
+  const visiting = new Set<CellNames<CSchema>>();
 
-  function visit(cellName: CellNames<Schema>) {
+  function visit(cellName: CellNames<CSchema>) {
     if (visiting.has(cellName)) {
       throw new CircularDependencyError(
         `Circular dependency detected involving ${String(cellName)}`
@@ -60,7 +45,7 @@ export function compileExecutionOrder<
     executionOrder.push(cellName);
   }
 
-  for (const { name } of schema) {
+  for (const { name } of cellSchema) {
     if (!visited.has(name)) {
       visit(name);
     }
@@ -73,16 +58,16 @@ export function compileExecutionOrder<
  * Evaluates a single row based on the execution order
  */
 export function evaluateRow<
-  Schema extends readonly CellSchema[],
+  CSchema extends readonly CellSchema[],
   ISchema extends readonly InputSchema[]
 >(
-  template: RowTemplate<Schema, ISchema>,
-  executionOrder: Array<CellNames<Schema>>,
-  rowState: Partial<RowState<Schema>>,
-  prevRowState: RowState<Schema> | null,
+  template: RowTemplate<CSchema, ISchema>,
+  executionOrder: Array<CellNames<CSchema>>,
+  rowState: Partial<RowState<CSchema>>,
+  prevRowState: RowState<CSchema> | null,
   inputs: TypedInputs<ISchema>
 ): void {
-  const context: FormulaContext<Schema, ISchema> = {
+  const context: FormulaContext<CSchema, ISchema> = {
     prevRow: prevRowState,
     currRow: rowState,
     inputs,
@@ -91,7 +76,7 @@ export function evaluateRow<
   for (const cellName of executionOrder) {
     const cellDef = template[cellName];
     const result = cellDef.formula(context);
-    rowState[cellName] = { evaluatedValue: result };
+    rowState[cellName] = result;
   }
 }
 
@@ -99,23 +84,22 @@ export function evaluateRow<
  * Main function to process multiple rows
  */
 export function processRows<
-  Schema extends readonly CellSchema[],
+  CSchema extends readonly CellSchema[],
   ISchema extends readonly InputSchema[]
 >(
-  schema: Schema,
-  template: RowTemplate<Schema, ISchema>,
+  cellSchema: CSchema,
+  template: RowTemplate<CSchema, ISchema>,
   inputs: TypedInputs<ISchema>,
   numRows: number
-): RowState<Schema>[] {
-  const executionOrder = compileExecutionOrder(template, schema);
-  const rows: RowState<Schema>[] = [];
-  let prevRowState: RowState<Schema> | null = null;
+): RowState<CSchema>[] {
+  const executionOrder = compileExecutionOrder(template, cellSchema);
+  const rows: RowState<CSchema>[] = [];
+  let prevRowState: RowState<CSchema> | null = null;
 
   for (let i = 0; i < numRows; i++) {
-    // const newRowState = createEmptyRowState(schema);
-    const newRowState: Partial<RowState<Schema>> = {};
+    const newRowState: Partial<RowState<CSchema>> = {};
     evaluateRow(template, executionOrder, newRowState, prevRowState, inputs);
-    const evaluatedRowState = newRowState as RowState<Schema>;
+    const evaluatedRowState = newRowState as RowState<CSchema>;
     rows.push(evaluatedRowState);
     prevRowState = evaluatedRowState;
   }

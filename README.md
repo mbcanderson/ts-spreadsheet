@@ -9,6 +9,7 @@ Software engineers spend too much time translating spreadsheets into code. This 
 My goal was to build something readable enough that an accountant, lawyer, tax professional, or whichever other person made the spreadsheet and asked it to be implemented in the codebase, could understand it. And, they could go in and modify it themselves if they needed to.
 
 It has some important design decisions and constraints:
+
 - Readability > Performance.
   - It is intended primarily to be easy to understand and translate between spreadsheet and code. It is not primarily intended to be performant.
   - This is probably not the right choice if you are processing millions of rows.
@@ -27,7 +28,6 @@ It has some important design decisions and constraints:
 - ⚡ Circular dependency detection
 - 💾 A single template, defined and updated just like a spreadsheet is
 
-
 ## Installation
 
 ```bash
@@ -41,71 +41,103 @@ Here's a basic example:
 ```typescript
 import { processRows } from 'typesheet';
 
+const schema = [
+  { name: 'a', type: 'number' },
+  { name: 'b', type: 'number' },
+] as const;
+
+const inputs = {
+  initialValue: 5,
+};
+
+const template: RowTemplate<typeof schema, typeof inputs> = {
+  a: {
+    type: 'number',
+    formula: ({ currRow }) => currRow.b,
+    currRowDependencies: ['b'],
+  },
+  b: {
+    type: 'number',
+    formula: ({ prevRow, inputs: { initialValue } }) =>
+      prevRow ? prevRow.b + 1 : initialValue,
+    currRowDependencies: [],
+  },
+};
+
+const rows = processRows(schema, template, inputs, 10);
+console.log(rows);
+```
+
+And a more complex example:
+
+```typescript
+import { processRows } from 'typesheet';
+
 // Calculate monthly loan payments and remaining balance
 const loanSchema = [
   { name: 'month', type: 'number' },
   { name: 'payment', type: 'number' },
-  { name: 'interest', type: 'number' },
-  { name: 'principal', type: 'number' },
-  { name: 'remainingBalance', type: 'number' }
+  { name: 'interestPayment', type: 'number' },
+  { name: 'principalPayment', type: 'number' },
+  { name: 'remainingBalance', type: 'number' },
 ] as const;
 
 const loanInputs = [
   { name: 'loanAmount', type: 'number' },
   { name: 'annualRate', type: 'number' },
-  { name: 'termMonths', type: 'number' }
+  { name: 'termMonths', type: 'number' },
 ] as const;
 
-const loanTemplate = {
+const loanTemplate: RowTemplate<typeof loanSchema, typeof loanInputs> = {
   month: {
     type: 'number',
-    formula: ({ prevRow }) => (prevRow?.month.evaluatedValue ?? 0) + 1,
-    currRowDependencies: []
+    formula: ({ prevRow }) => (prevRow?.month ?? 0) + 1,
+    currRowDependencies: [],
   },
   payment: {
     type: 'number',
-    formula: ({ inputs: { loanAmount, annualRate, termMonths } }) => {
+    formula: ({ prevRow, inputs: { loanAmount, annualRate, termMonths } }) => {
+      if (prevRow) {
+        return prevRow.payment;
+      }
       const monthlyRate = annualRate / 12;
-      return loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) 
-        / (Math.pow(1 + monthlyRate, termMonths) - 1);
+      return (
+        (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths))) /
+        (Math.pow(1 + monthlyRate, termMonths) - 1)
+      );
     },
-    currRowDependencies: []
+    currRowDependencies: [],
   },
-  interest: {
+  interestPayment: {
     type: 'number',
-    formula: ({ prevRow, currRow, inputs: { annualRate } }) => {
-      const balance = prevRow?.remainingBalance.evaluatedValue ?? 
-        currRow.payment?.evaluatedValue ?? 0;
-      return balance * (annualRate / 12);
+    formula: ({ prevRow, inputs: { annualRate, loanAmount } }) => {
+      const balance = prevRow ? prevRow.remainingBalance : loanAmount;
+      return (balance * annualRate) / 12;
     },
-    currRowDependencies: ['payment']
+    currRowDependencies: [],
   },
-  principal: {
+  principalPayment: {
     type: 'number',
     formula: ({ currRow }) => {
-      const payment = currRow.payment?.evaluatedValue ?? 0;
-      const interest = currRow.interest?.evaluatedValue ?? 0;
-      return payment - interest;
+      return currRow.payment! - currRow.interestPayment!;
     },
-    currRowDependencies: ['payment', 'interest']
+    currRowDependencies: ['payment', 'interestPayment'],
   },
   remainingBalance: {
     type: 'number',
     formula: ({ prevRow, currRow, inputs: { loanAmount } }) => {
-      const previousBalance = prevRow?.remainingBalance.evaluatedValue ?? loanAmount;
-      const principal = currRow.principal?.evaluatedValue ?? 0;
-      return previousBalance - principal;
+      const previousBalance = prevRow?.remainingBalance ?? loanAmount;
+      return previousBalance - currRow.principalPayment!;
     },
-    currRowDependencies: ['principal']
-  }
+    currRowDependencies: ['principalPayment'],
+  },
 };
 
 const schedule = processRows(
   loanSchema,
-  loanInputs,
   loanTemplate,
   { loanAmount: 200000, annualRate: 0.045, termMonths: 360 },
-  12 // First year of payments
+  360
 );
 console.log(schedule);
 ```
@@ -115,7 +147,9 @@ console.log(schedule);
 ### Types
 
 #### `CellSchema` and `InputSchema`
+
 Define the structure of cells and inputs:
+
 ```typescript
 interface CellSchema {
   name: string;
@@ -129,7 +163,9 @@ interface InputSchema {
 ```
 
 #### `CellDefinition`
+
 Defines a cell's behavior:
+
 ```typescript
 interface CellDefinition<Schema, ISchema, Name> {
   type: 'number' | 'string' | 'boolean';
@@ -139,7 +175,9 @@ interface CellDefinition<Schema, ISchema, Name> {
 ```
 
 #### `FormulaContext`
+
 Context object passed to formulas. The currRow is a `Partial`, because it is being built up cell by cell.
+
 ```typescript
 type FormulaContext<Schema, ISchema> = {
   prevRow: RowState<Schema> | null;
@@ -151,11 +189,12 @@ type FormulaContext<Schema, ISchema> = {
 ### Functions
 
 #### `processRows`
+
 This is the main function you will call. It processes multiple rows using the provided template and inputs.
+
 ```typescript
 function processRows<Schema, ISchema>(
   schema: Schema,
-  inputSchema: ISchema,
   template: RowTemplate<Schema, ISchema>,
   inputs: TypedInputs<ISchema>,
   numRows: number
@@ -163,7 +202,9 @@ function processRows<Schema, ISchema>(
 ```
 
 #### `compileExecutionOrder`
+
 You don't need to worry about ordering your cells, typesheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.
+
 ```typescript
 function compileExecutionOrder<Schema, ISchema>(
   template: RowTemplate<Schema, ISchema>,
@@ -182,12 +223,12 @@ typesheet automatically manages cell dependencies and detects circular reference
 const circularTemplate = {
   a: {
     type: 'number',
-    formula: ({ currRow }) => currRow.b?.evaluatedValue as number,
+    formula: ({ currRow }) => currRow.b,
     currRowDependencies: ['b']
   },
   b: {
     type: 'number',
-    formula: ({ currRow }) => currRow.a?.evaluatedValue as number,
+    formula: ({ currRow }) => currRow.a,
     currRowDependencies: ['a']
   }
 };
@@ -202,14 +243,14 @@ typesheet provides strong type checking:
 const invalidTemplate = {
   id: {
     type: 'number',
-    formula: () => "not a number", // Type error!
-    currRowDependencies: ['nonexistent'] // Type error!
-  }
+    formula: () => 'not a number', // Type error!
+    currRowDependencies: ['nonexistent'], // Type error!
+  },
 };
 
 const invalidInputs = {
-  multiplier: "2", // Type error: should be number
-  missing: true    // Type error: not in schema
+  multiplier: '2', // Type error: should be number
+  notInSchema: true, // Type error: not in schema
 };
 ```
 
@@ -233,7 +274,7 @@ try {
 
 Please feel free to submit a Pull Request or open an issue to discuss what you would like to change.
 
-If you think a lot about spreadsheets and how to embed them in your code, shoot me a DM on LinkedIn. I'd love to work with you. 
+If you think a lot about spreadsheets and how to embed them in your code, shoot me a DM on LinkedIn. I'd love to work with you.
 
 ## License
 
