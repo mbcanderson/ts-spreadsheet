@@ -41,19 +41,17 @@ Here's a basic example:
 ```typescript
 import { processRows } from 'ts-spreadsheet';
 
-const schema = [
+const cellSchema = [
   { name: 'a', type: 'number' },
   { name: 'b', type: 'number' },
 ] as const;
 
-const inputs = {
-  initialValue: 5,
-};
+const inputSchema = [{ name: 'initialValue', type: 'number' }] as const;
 
-const template: RowTemplate<typeof schema, typeof inputs> = {
+const template: RowTemplate<typeof cellSchema, typeof inputSchema> = {
   a: {
     type: 'number',
-    formula: ({ currRow }) => currRow.b,
+    formula: ({ currRow }) => currRow.b!,
     currRowDependencies: ['b'],
   },
   b: {
