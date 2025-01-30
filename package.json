@@ -1,5 +1,5 @@
 {
-  "name": "typesheet",
+  "name": "type-sheet",
   "version": "1.0.0",
   "description": "A type-safe spreadsheet calculation engine with schema validation. This library provides a framework for defining and executing spreadsheet-like calculations with strong TypeScript type checking.",
   "main": "dist/index.js",

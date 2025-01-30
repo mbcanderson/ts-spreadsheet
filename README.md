@@ -1,4 +1,4 @@
-# typesheet
+# type-sheet
 
 A type-safe spreadsheet calculation engine with schema validation. This library provides a framework for defining and executing spreadsheet-like calculations with strong TypeScript type checking.
 
@@ -31,7 +31,7 @@ It has some important design decisions and constraints:
 ## Installation
 
 ```bash
-npm install typesheet
+npm install type-sheet
 ```
 
 ## Usage
@@ -39,7 +39,7 @@ npm install typesheet
 Here's a basic example:
 
 ```typescript
-import { processRows } from 'typesheet';
+import { processRows } from 'type-sheet';
 
 const schema = [
   { name: 'a', type: 'number' },
@@ -71,7 +71,7 @@ console.log(rows);
 And a more complex example:
 
 ```typescript
-import { processRows } from 'typesheet';
+import { processRows } from 'type-sheet';
 
 // Calculate monthly loan payments and remaining balance
 const loanSchema = [
@@ -203,7 +203,7 @@ function processRows<Schema, ISchema>(
 
 #### `compileExecutionOrder`
 
-You don't need to worry about ordering your cells, typesheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.
+You don't need to worry about ordering your cells, type-sheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.
 
 ```typescript
 function compileExecutionOrder<Schema, ISchema>(
@@ -216,7 +216,7 @@ function compileExecutionOrder<Schema, ISchema>(
 
 ### Dependency Management
 
-typesheet automatically manages cell dependencies and detects circular references:
+type-sheet automatically manages cell dependencies and detects circular references:
 
 ```typescript
 // This will throw a CircularDependencyError
@@ -224,19 +224,19 @@ const circularTemplate = {
   a: {
     type: 'number',
     formula: ({ currRow }) => currRow.b,
-    currRowDependencies: ['b']
+    currRowDependencies: ['b'],
   },
   b: {
     type: 'number',
     formula: ({ currRow }) => currRow.a,
-    currRowDependencies: ['a']
-  }
+    currRowDependencies: ['a'],
+  },
 };
 ```
 
 ### Type Safety
 
-typesheet provides strong type checking:
+type-sheet provides strong type checking:
 
 ```typescript
 // TypeScript will catch these errors:
@@ -256,10 +256,10 @@ const invalidInputs = {
 
 ## Error Handling
 
-typesheet includes built-in error types:
+type-sheet includes built-in error types:
 
 ```typescript
-import { CircularDependencyError } from 'typesheet';
+import { CircularDependencyError } from 'type-sheet';
 
 try {
   const results = processRows(schema, inputSchema, template, inputs, 3);
