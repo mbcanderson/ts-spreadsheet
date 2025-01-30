@@ -1,4 +1,4 @@
-# type-sheet
+# ts-spreadsheet
 
 A type-safe spreadsheet calculation engine with schema validation. This library provides a framework for defining and executing spreadsheet-like calculations with strong TypeScript type checking.
 
@@ -31,7 +31,7 @@ It has some important design decisions and constraints:
 ## Installation
 
 ```bash
-npm install type-sheet
+npm install ts-spreadsheet
 ```
 
 ## Usage
@@ -39,7 +39,7 @@ npm install type-sheet
 Here's a basic example:
 
 ```typescript
-import { processRows } from 'type-sheet';
+import { processRows } from 'ts-spreadsheet';
 
 const schema = [
   { name: 'a', type: 'number' },
@@ -71,7 +71,7 @@ console.log(rows);
 And a more complex example:
 
 ```typescript
-import { processRows } from 'type-sheet';
+import { processRows } from 'ts-spreadsheet';
 
 // Calculate monthly loan payments and remaining balance
 const loanSchema = [
@@ -203,7 +203,7 @@ function processRows<Schema, ISchema>(
 
 #### `compileExecutionOrder`
 
-You don't need to worry about ordering your cells, type-sheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.
+You don't need to worry about ordering your cells, ts-spreadsheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.
 
 ```typescript
 function compileExecutionOrder<Schema, ISchema>(
@@ -216,7 +216,7 @@ function compileExecutionOrder<Schema, ISchema>(
 
 ### Dependency Management
 
-type-sheet automatically manages cell dependencies and detects circular references:
+ts-spreadsheet automatically manages cell dependencies and detects circular references:
 
 ```typescript
 // This will throw a CircularDependencyError
@@ -236,7 +236,7 @@ const circularTemplate = {
 
 ### Type Safety
 
-type-sheet provides strong type checking:
+ts-spreadsheet provides strong type checking:
 
 ```typescript
 // TypeScript will catch these errors:
@@ -256,10 +256,10 @@ const invalidInputs = {
 
 ## Error Handling
 
-type-sheet includes built-in error types:
+ts-spreadsheet includes built-in error types:
 
 ```typescript
-import { CircularDependencyError } from 'type-sheet';
+import { CircularDependencyError } from 'ts-spreadsheet';
 
 try {
   const results = processRows(schema, inputSchema, template, inputs, 3);

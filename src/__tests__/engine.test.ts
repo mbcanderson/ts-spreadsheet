@@ -1,6 +1,6 @@
 import { processRows, CircularDependencyError, RowTemplate } from '../';
 
-describe('type-sheet', () => {
+describe('ts-spreadsheet', () => {
   const basicInputSchema = [{ name: 'multiplier', type: 'number' }] as const;
 
   describe('Basic Example', () => {
