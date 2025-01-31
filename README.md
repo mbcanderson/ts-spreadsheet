@@ -199,6 +199,22 @@ function processRows<Schema, ISchema>(
 ): RowState<Schema>[];
 ```
 
+#### `toCsv`
+
+Converts the processed rows into a CSV string. For easy comparing with your source spreadsheet, the headers are ordered based on the cell schema.
+
+```typescript
+function toCsv<Schema>(cellSchema: Schema, rows: RowState<Schema>[]): string;
+```
+
+Example usage:
+
+```typescript
+const rows = processRows(cellSchema, template, inputs, 10);
+const csv = toCsv(cellSchema, rows);
+console.log(csv);
+```
+
 #### `compileExecutionOrder`
 
 You don't need to worry about ordering your cells, ts-spreadsheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.

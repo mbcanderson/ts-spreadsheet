@@ -106,3 +106,17 @@ export function processRows<
 
   return rows;
 }
+
+/**
+ * Converts rows to a CSV string. Maintains the order of the cells as defined in the cellSchema.
+ */
+export function toCsv<CSchema extends readonly CellSchema[] = readonly CellSchema[]>(
+  cellSchema: CSchema,
+  rows: RowState<CSchema>[]
+) {
+  const headers = cellSchema.map((cell) => cell.name) as CellNames<CSchema>[];
+  return [
+    headers.join(','),
+    ...rows.map((row) => headers.map((header) => row[header]).join(',')),
+  ].join('\n');
+}

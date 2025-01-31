@@ -1,4 +1,4 @@
-import { processRows, CircularDependencyError, RowTemplate } from '../';
+import { processRows, CircularDependencyError, RowTemplate, toCsv } from '../';
 
 describe('ts-spreadsheet', () => {
   const basicInputSchema = [{ name: 'multiplier', type: 'number' }] as const;
@@ -280,6 +280,23 @@ describe('ts-spreadsheet', () => {
         string: 'test-42',
         boolean: true,
       });
+    });
+  });
+
+  describe('toCsv', () => {
+    test('outputs headers in order of cellSchema and rows in the correct order', () => {
+      const cellSchema = [
+        { name: 'month', type: 'number' },
+        { name: 'payment', type: 'number' },
+      ] as const;
+      const rows = [
+        { payment: 100, month: 1 },
+        { payment: 200, month: 2 },
+        { payment: 350, month: 3 },
+      ];
+
+      const csv = toCsv(cellSchema, rows);
+      expect(csv).toEqual('month,payment\n1,100\n2,200\n3,350');
     });
   });
 });
