@@ -22,11 +22,11 @@ It has some important design decisions and constraints:
 
 ## Features
 
-- 🔒 Full TypeScript type safety
-- 📐 Schema-based validation for cells and inputs
-- 🔄 Automatic execution order based on dependencies
-- ⚡ Circular dependency detection
-- 💾 A single template, defined and updated just like a spreadsheet is
+- Full TypeScript type safety
+- Schema-based validation for cells and inputs
+- Automatic execution order based on dependencies
+- Circular dependency detection
+- A single template, defined and updated just like a spreadsheet is
 
 ## Installation
 
@@ -46,9 +46,9 @@ const cellSchema = [
   { name: 'b', type: 'number' },
 ] as const;
 
-const inputSchema = [{ name: 'initialValue', type: 'number' }] as const;
+type InputSchema = [{ name: 'initialValue'; type: number }];
 
-const template: RowTemplate<typeof cellSchema, typeof inputSchema> = {
+const template: RowTemplate<typeof cellSchema, InputSchema> = {
   a: {
     type: 'number',
     formula: ({ currRow }) => currRow.b!,
@@ -62,7 +62,7 @@ const template: RowTemplate<typeof cellSchema, typeof inputSchema> = {
   },
 };
 
-const rows = processRows(schema, template, inputs, 10);
+const rows = processRows(cellSchema, template, { initialValue: 5 }, 10);
 console.log(rows);
 ```
 
@@ -80,11 +80,11 @@ const loanSchema = [
   { name: 'remainingBalance', type: 'number' },
 ] as const;
 
-const loanInputs = [
-  { name: 'loanAmount', type: 'number' },
-  { name: 'annualRate', type: 'number' },
-  { name: 'termMonths', type: 'number' },
-] as const;
+type LoanInputSchema = [
+  { name: 'loanAmount'; type: number },
+  { name: 'annualRate'; type: number },
+  { name: 'termMonths'; type: 12 | 24 | 36 | 48 | 60 | 72 | 84 | 96 | 108 | 120 | 180 | 240 | 360 },
+];
 
 const loanTemplate: RowTemplate<typeof loanSchema, typeof loanInputs> = {
   month: {
@@ -142,61 +142,20 @@ console.log(schedule);
 
 ## API Documentation
 
-### Types
-
-#### `CellSchema` and `InputSchema`
-
-Define the structure of cells and inputs:
-
-```typescript
-interface CellSchema {
-  name: string;
-  type: 'number' | 'string' | 'boolean';
-}
-
-interface InputSchema {
-  name: string;
-  type: 'number' | 'string' | 'boolean';
-}
-```
-
-#### `CellDefinition`
-
-Defines a cell's behavior:
-
-```typescript
-interface CellDefinition<Schema, ISchema, Name> {
-  type: 'number' | 'string' | 'boolean';
-  formula: (context: FormulaContext<Schema, ISchema>) => CellType;
-  currRowDependencies: Array<CellNames<Schema>>;
-}
-```
-
-#### `FormulaContext`
-
-Context object passed to formulas. The currRow is a `Partial`, because it is being built up cell by cell.
-
-```typescript
-type FormulaContext<Schema, ISchema> = {
-  prevRow: RowState<Schema> | null;
-  currRow: Partial<RowState<Schema>>;
-  inputs: TypedInputs<ISchema>;
-};
-```
-
-### Functions
-
 #### `processRows`
 
 This is the main function you will call. It processes multiple rows using the provided template and inputs.
 
 ```typescript
-function processRows<Schema, ISchema>(
-  schema: Schema,
-  template: RowTemplate<Schema, ISchema>,
+function processRows<
+  CSchema extends readonly CellSchema[],
+  ISchema extends readonly InputSchema<unknown>[]
+>(
+  cellSchema: CSchema,
+  template: RowTemplate<CSchema, ISchema>,
   inputs: TypedInputs<ISchema>,
   numRows: number
-): RowState<Schema>[];
+): RowState<CSchema>[]
 ```
 
 #### `toCsv`
@@ -204,7 +163,10 @@ function processRows<Schema, ISchema>(
 Converts the processed rows into a CSV string. For easy comparing with your source spreadsheet, the headers are ordered based on the cell schema.
 
 ```typescript
-function toCsv<Schema>(cellSchema: Schema, rows: RowState<Schema>[]): string;
+function toCsv<CSchema extends readonly CellSchema[] = readonly CellSchema[]>(
+  cellSchema: CSchema,
+  rows: RowState<CSchema>[]
+): string;
 ```
 
 Example usage:
@@ -220,10 +182,13 @@ console.log(csv);
 You don't need to worry about ordering your cells, ts-spreadsheet handles it. This function determines the order of cell evaluation based on dependencies. You won't need to call this directly, it is called internally by `processRows`.
 
 ```typescript
-function compileExecutionOrder<Schema, ISchema>(
-  template: RowTemplate<Schema, ISchema>,
-  schema: Schema
-): Array<CellNames<Schema>>;
+function compileExecutionOrder<
+  CSchema extends readonly CellSchema[],
+  ISchema extends readonly InputSchema<unknown>[]
+>(
+  template: RowTemplate<CSchema, ISchema>,
+  cellSchema: CSchema
+): Array<CellNames<CSchema>>;
 ```
 
 ## Advanced Usage

@@ -14,7 +14,7 @@ import { CircularDependencyError } from './errors';
  */
 export function compileExecutionOrder<
   CSchema extends readonly CellSchema[],
-  ISchema extends readonly InputSchema[]
+  ISchema extends readonly InputSchema<unknown>[]
 >(
   template: RowTemplate<CSchema, ISchema>,
   cellSchema: CSchema
@@ -59,7 +59,7 @@ export function compileExecutionOrder<
  */
 export function evaluateRow<
   CSchema extends readonly CellSchema[],
-  ISchema extends readonly InputSchema[]
+  ISchema extends readonly InputSchema<unknown>[]
 >(
   template: RowTemplate<CSchema, ISchema>,
   executionOrder: Array<CellNames<CSchema>>,
@@ -85,7 +85,7 @@ export function evaluateRow<
  */
 export function processRows<
   CSchema extends readonly CellSchema[],
-  ISchema extends readonly InputSchema[]
+  ISchema extends readonly InputSchema<unknown>[]
 >(
   cellSchema: CSchema,
   template: RowTemplate<CSchema, ISchema>,

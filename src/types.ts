@@ -12,11 +12,11 @@ export interface CellSchema {
 }
 
 /**
- * Schema definition for an input parameter
+ * Schema definition for an input parameter with generic type support
  */
-export interface InputSchema {
+export interface InputSchema<T> {
   name: string;
-  type: 'number' | 'string' | 'boolean';
+  type: T;
 }
 
 /**
@@ -28,7 +28,7 @@ export type CellNames<CSchema extends readonly CellSchema[]> =
 /**
  * Extract input names from a schema
  */
-export type InputNames<ISchema extends readonly InputSchema[]> =
+export type InputNames<ISchema extends readonly InputSchema<unknown>[]> =
   ISchema[number]['name'];
 
 /**
@@ -52,17 +52,17 @@ export type CellTypeFromSchema<
 > = ConcreteType<Extract<CSchema[number], { name: Name }>['type']>;
 
 /**
- * Get concrete type for a specific input from schema
+ * Get concrete type from an input schema entry
  */
 export type InputTypeFromSchema<
-  ISchema extends readonly InputSchema[],
+  ISchema extends readonly InputSchema<unknown>[],
   Name extends InputNames<ISchema>
-> = ConcreteType<Extract<ISchema[number], { name: Name }>['type']>;
+> = Extract<ISchema[number], { name: Name }>['type'];
 
 /**
  * Type-safe inputs object based on input schema
  */
-export type TypedInputs<ISchema extends readonly InputSchema[]> = {
+export type TypedInputs<ISchema extends readonly InputSchema<unknown>[]> = {
   [Name in InputNames<ISchema>]: InputTypeFromSchema<ISchema, Name>;
 };
 
@@ -76,7 +76,7 @@ export type CellState<T extends CellType = CellType> = T;
  */
 export type FormulaContext<
   CSchema extends readonly CellSchema[],
-  ISchema extends readonly InputSchema[]
+  ISchema extends readonly InputSchema<unknown>[]
 > = {
   prevRow: RowState<CSchema> | null;
   currRow: Partial<RowState<CSchema>>;
@@ -88,7 +88,7 @@ export type FormulaContext<
  */
 export interface CellDefinition<
   CSchema extends readonly CellSchema[],
-  ISchema extends readonly InputSchema[],
+  ISchema extends readonly InputSchema<unknown>[],
   Name extends CellNames<CSchema>
 > {
   type: Extract<CSchema[number], { name: Name }>['type'];
@@ -103,7 +103,7 @@ export interface CellDefinition<
  */
 export type RowTemplate<
   CSchema extends readonly CellSchema[],
-  ISchema extends readonly InputSchema[]
+  ISchema extends readonly InputSchema<unknown>[]
 > = {
   [Name in CellNames<CSchema>]: CellDefinition<CSchema, ISchema, Name>;
 };

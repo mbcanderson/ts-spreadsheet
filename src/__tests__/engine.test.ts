@@ -1,7 +1,7 @@
 import { processRows, CircularDependencyError, RowTemplate, toCsv } from '../';
 
 describe('ts-spreadsheet', () => {
-  const basicInputSchema = [{ name: 'multiplier', type: 'number' }] as const;
+  type BasicInputSchema = [{ name: 'multiplier'; type: number }];
 
   describe('Basic Example', () => {
     const cellSchema = [
@@ -9,9 +9,9 @@ describe('ts-spreadsheet', () => {
       { name: 'b', type: 'number' },
     ] as const;
 
-    const inputSchema = [{ name: 'initialValue', type: 'number' }] as const;
+    type InputSchema = [{ name: 'initialValue'; type: number }];
 
-    const template: RowTemplate<typeof cellSchema, typeof inputSchema> = {
+    const template: RowTemplate<typeof cellSchema, InputSchema> = {
       a: {
         type: 'number',
         formula: ({ currRow }) => currRow.b!,
@@ -44,13 +44,13 @@ describe('ts-spreadsheet', () => {
       { name: 'remainingBalance', type: 'number' },
     ] as const;
 
-    const loanInputs = [
-      { name: 'loanAmount', type: 'number' },
-      { name: 'annualRate', type: 'number' },
-      { name: 'termMonths', type: 'number' },
-    ] as const;
+    type LoanInputs = [
+      { name: 'loanAmount'; type: number },
+      { name: 'annualRate'; type: number },
+      { name: 'termMonths'; type: number }
+    ];
 
-    const loanTemplate: RowTemplate<typeof loanSchema, typeof loanInputs> = {
+    const loanTemplate: RowTemplate<typeof loanSchema, LoanInputs> = {
       month: {
         type: 'number',
         formula: ({ prevRow }) => (prevRow?.month ?? 0) + 1,
@@ -123,6 +123,55 @@ describe('ts-spreadsheet', () => {
     });
   });
 
+  describe('Complex Input Type', () => {
+    test('handles complex input types correctly', () => {
+      const cellSchema = [
+        { name: 'col1', type: 'number' },
+        { name: 'col2', type: 'string' },
+      ] as const;
+
+      interface CustomInterface {
+        num: number;
+        str: string;
+      }
+      type InputSchema = [
+        { name: 'enumInput'; type: 'a' | 'b' },
+        { name: 'customInput'; type: CustomInterface }
+      ];
+
+      const template: RowTemplate<typeof cellSchema, InputSchema> = {
+        col1: {
+          type: 'number',
+          formula: ({ inputs: { enumInput, customInput } }) =>
+            enumInput === 'a' ? customInput.num : customInput.num * 2,
+          currRowDependencies: [],
+        },
+        col2: {
+          type: 'string',
+          formula: ({ inputs: { enumInput, customInput } }) =>
+            enumInput === 'a' ? customInput.str : customInput.str.toUpperCase(),
+          currRowDependencies: [],
+        },
+      };
+
+      const resultsA = processRows(
+        cellSchema,
+        template,
+        { enumInput: 'a', customInput: { num: 1, str: 'hello' } },
+        1
+      );
+      expect(resultsA[0]).toEqual({ col1: 1, col2: 'hello' });
+
+      const resultsB = processRows(
+        cellSchema,
+        template,
+        { enumInput: 'b', customInput: { num: 1, str: 'hello' } },
+        1
+      );
+      expect(resultsB[0]).toEqual({ col1: 2, col2: 'HELLO' });
+    });
+  });
+
   describe('Dependencies', () => {
     test('handles complex dependencies correctly', () => {
       const complexSchema = [
@@ -133,7 +182,7 @@ describe('ts-spreadsheet', () => {
 
       const complexTemplate: RowTemplate<
         typeof complexSchema,
-        typeof basicInputSchema
+        BasicInputSchema
       > = {
         base: {
           type: 'number',
@@ -174,7 +223,7 @@ describe('ts-spreadsheet', () => {
 
       const circularTemplate: RowTemplate<
         typeof circularSchema,
-        typeof basicInputSchema
+        BasicInputSchema
       > = {
         a: {
           type: 'number',
@@ -203,7 +252,7 @@ describe('ts-spreadsheet', () => {
 
       const prevRowTemplate: RowTemplate<
         typeof prevRowSchema,
-        typeof basicInputSchema
+        BasicInputSchema
       > = {
         current: {
           type: 'number',
@@ -240,15 +289,12 @@ describe('ts-spreadsheet', () => {
         { name: 'boolean', type: 'boolean' },
       ] as const;
 
-      const mixedInputSchema = [
-        { name: 'textPrefix', type: 'string' },
-        { name: 'threshold', type: 'number' },
-      ] as const;
+      type MixedInputSchema = [
+        { name: 'textPrefix'; type: string },
+        { name: 'threshold'; type: number }
+      ];
 
-      const mixedTemplate: RowTemplate<
-        typeof mixedSchema,
-        typeof mixedInputSchema
-      > = {
+      const mixedTemplate: RowTemplate<typeof mixedSchema, MixedInputSchema> = {
         number: {
           type: 'number',
           formula: () => 42,
