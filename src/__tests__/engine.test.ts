@@ -345,4 +345,31 @@ describe('ts-spreadsheet', () => {
       expect(csv).toEqual('month,payment\n1,100\n2,200\n3,350');
     });
   });
+
+  describe('stopEarlyIf', () => {
+    test('stops early if the stopEarlyIf function returns true', () => {
+      const cellSchema = [
+        { name: 'month', type: 'number' },
+        { name: 'payment', type: 'number' },
+      ] as const;
+
+      const template: RowTemplate<typeof cellSchema, BasicInputSchema> = {
+        month: {
+          type: 'number',
+          formula: ({ prevRow }) => (prevRow?.month ?? 0) + 1,
+          currRowDependencies: [],
+        },
+        payment: {
+          type: 'number',
+          formula: ({ currRow }) => currRow.month! * 100,
+          currRowDependencies: ['month'],
+        },
+      };
+
+      const results = processRows(cellSchema, template, { multiplier: 2 }, 10, (row) => row.payment! > 500);
+      expect(results).toHaveLength(6);
+      expect(results[0]).toEqual({ month: 1, payment: 100 });
+      expect(results[5]).toEqual({ month: 6, payment: 600 });
+    });
+  });
 });

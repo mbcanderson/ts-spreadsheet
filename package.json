@@ -1,6 +1,6 @@
 {
   "name": "ts-spreadsheet",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A type-safe spreadsheet calculation engine with schema validation. This library provides a framework for defining and executing spreadsheet-like calculations with strong TypeScript type checking.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

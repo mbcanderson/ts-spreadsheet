@@ -90,18 +90,22 @@ export function processRows<
   cellSchema: CSchema,
   template: RowTemplate<CSchema, ISchema>,
   inputs: TypedInputs<ISchema>,
-  numRows: number
+  maxNumRows: number,
+  stopEarlyIf?: (rowState: RowState<CSchema>) => boolean,
 ): RowState<CSchema>[] {
   const executionOrder = compileExecutionOrder(template, cellSchema);
   const rows: RowState<CSchema>[] = [];
   let prevRowState: RowState<CSchema> | null = null;
 
-  for (let i = 0; i < numRows; i++) {
+  for (let i = 0; i < maxNumRows; i++) {
     const newRowState: Partial<RowState<CSchema>> = {};
     evaluateRow(template, executionOrder, newRowState, prevRowState, inputs);
     const evaluatedRowState = newRowState as RowState<CSchema>;
     rows.push(evaluatedRowState);
     prevRowState = evaluatedRowState;
+    if (stopEarlyIf && stopEarlyIf(evaluatedRowState)) {
+      break;
+    }
   }
 
   return rows;
